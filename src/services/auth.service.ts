@@ -1,0 +1,84 @@
+import { PrismaClient, UserRole, VerificationType } from "@prisma/client";
+import { hashPassword } from "../utils/password.util.js";
+import { generateOTP } from "../utils/otp.util.js";
+import { transporter } from "../config/mail.config.js";
+
+const prisma = new PrismaClient();
+
+export const registerUser = async (
+  email: string,
+  pass: string,
+  fullName: string,
+  role: UserRole,
+) => {
+  // 1. Check existence
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) throw new Error("User already exists");
+
+  // 2. Hash Password
+  const hashedPassword = await hashPassword(pass);
+
+  // 3. Database Transaction: Create User + Create OTP
+  return await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        fullName,
+        role,
+        isVerified: false,
+      },
+    });
+
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 Mins
+
+    await tx.verification.create({
+      data: {
+        code: otp,
+        type: VerificationType.REGISTRATION,
+        expiresAt,
+        userId: user.id,
+      },
+    });
+
+    // 4. Send Email (In production, this should be an async queue)
+    await transporter.sendMail({
+      from: '"Delivery App" <noreply@delivery.com>',
+      to: email,
+      subject: "Verify your account",
+      text: `Your verification code is: ${otp}`,
+    });
+
+    return user;
+  });
+};
+
+export const verifyOTP = async (userId: string, code: string) => {
+  const verification = await prisma.verification.findFirst({
+    where: {
+      userId,
+      code,
+      type: VerificationType.REGISTRATION,
+    },
+  });
+
+  if (!verification) throw new Error("Invalid verification code");
+
+  if (new Date() > verification.expiresAt) {
+    throw new Error("Verification code has expired");
+  }
+
+  // Use a transaction to ensure both steps happen or none
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { isVerified: true },
+    }),
+    prisma.verification.delete({
+      where: { id: verification.id },
+    }),
+  ]);
+
+  return { message: "Account verified successfully" };
+};
