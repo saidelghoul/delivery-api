@@ -6,8 +6,10 @@ import {
 import { hashPassword, comparePassword } from "../utils/password.util.js";
 import { generateOTP } from "../utils/otp.util.js";
 import { transporter } from "../config/mail.config.js";
+import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "refresh_secret_456";
 
 export const registerUser = async (
   email: string,
@@ -122,4 +124,29 @@ export const loginUser = async (email: string, pass: string) => {
     accessToken,
     refreshToken,
   };
+};
+
+export const refreshSession = async (token: string) => {
+  // 1. Verify the refresh token
+  const decoded = jwt.verify(token, REFRESH_SECRET) as any;
+
+  // 2. Check if user exists and if the token matches the one in DB
+  const user = await prisma.user.findUnique({ where: { id: decoded.sub } });
+
+  if (!user || user.refreshToken !== token) {
+    throw new Error("Invalid or expired refresh token");
+  }
+
+  // 3. Generate new Access Token
+  const newAccessToken = generateAccessToken({ sub: user.id, role: user.role });
+
+  return { accessToken: newAccessToken };
+};
+
+export const logoutUser = async (userId: string) => {
+  // Remove the refresh token from the DB so the session is truly dead
+  await prisma.user.update({
+    where: { id: userId },
+    data: { refreshToken: null },
+  });
 };

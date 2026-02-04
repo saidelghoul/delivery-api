@@ -12,4 +12,10 @@ router.post("/verify", AuthController.verifyAccount);
 // Authentication
 router.post("/login", AuthController.login);
 
+// Refresh token
+router.post("/refresh", AuthController.refresh);
+
+//logout
+router.post("/logout", AuthController.logout);
+
 export default router;
