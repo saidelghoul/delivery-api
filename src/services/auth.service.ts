@@ -1,5 +1,9 @@
 import { PrismaClient, UserRole, VerificationType } from "@prisma/client";
-import { hashPassword } from "../utils/password.util.js";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../utils/jwt.util.js";
+import { hashPassword, comparePassword } from "../utils/password.util.js";
 import { generateOTP } from "../utils/otp.util.js";
 import { transporter } from "../config/mail.config.js";
 
@@ -81,4 +85,41 @@ export const verifyOTP = async (userId: string, code: string) => {
   ]);
 
   return { message: "Account verified successfully" };
+};
+
+export const loginUser = async (email: string, pass: string) => {
+  // 1. Find the user
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("Invalid credentials");
+
+  // 2. Check if verified
+  if (!user.isVerified)
+    throw new Error("Please verify your email before logging in");
+
+  // 3. Verify password
+  const isMatch = await comparePassword(pass, user.password);
+  if (!isMatch) throw new Error("Invalid credentials");
+
+  // 4. Generate Tokens
+  const payload = { sub: user.id, role: user.role };
+  const accessToken = generateAccessToken(payload);
+  const refreshToken = generateRefreshToken(payload);
+
+  // 5. Save Refresh Token to DB for session management
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { refreshToken }, // In a real app, you might hash this too
+  });
+
+  return {
+    user: {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      fullName: user.fullName,
+      needsPasswordChange: user.needsPasswordChange,
+    },
+    accessToken,
+    refreshToken,
+  };
 };
