@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import * as AuthService from "../services/auth.service.js";
+import type { AuthRequest } from "../middlewares/auth.middleware.js";
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -64,6 +65,33 @@ export const logout = async (req: Request, res: Response) => {
     const { userId } = req.body; // Later we will get this from the Auth Middleware
     await AuthService.logoutUser(userId);
     res.status(200).json({ message: "Logged out successfully" });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+export const createWorker = async (req: AuthRequest, res: Response) => {
+  try {
+    const { email, fullName, role } = req.body;
+
+    // Validate role input
+    if (!["DRIVER", "DISPATCHER"].includes(role)) {
+      return res
+        .status(400)
+        .json({ message: "Can only create DRIVER or DISPATCHER roles" });
+    }
+
+    const { worker, tempPassword } = await AuthService.createWorkerAccount(
+      email,
+      fullName,
+      role,
+      req.user!.id,
+    );
+
+    res.status(201).json({
+      message: `Worker account created.`,
+      worker: { id: worker.id, email: worker.email, role: worker.role },
+      temporaryPassword: tempPassword, // In dev, we return it to see it; in prod, we'd email it.
+    });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }

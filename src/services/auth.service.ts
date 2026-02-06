@@ -150,3 +150,32 @@ export const logoutUser = async (userId: string) => {
     data: { refreshToken: null },
   });
 };
+
+export const createWorkerAccount = async (
+  email: string,
+  fullName: string,
+  role: UserRole, // Limited to DRIVER or DISPATCHER in controller
+  adminId: string,
+) => {
+  // 1. Check if user already exists
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) throw new Error("User with this email already exists");
+
+  // 2. Set a temporary password (In a real app, you might email this or a reset link)
+  const tempPassword = "Welcome@" + Math.floor(1000 + Math.random() * 9000);
+  const hashedPassword = await hashPassword(tempPassword);
+
+  // 3. Create the worker
+  const worker = await prisma.user.create({
+    data: {
+      email,
+      fullName,
+      password: hashedPassword,
+      role,
+      isVerified: true, // Auto-verified by Admin
+      needsPasswordChange: true, // Forces change on first login
+    },
+  });
+
+  return { worker, tempPassword };
+};

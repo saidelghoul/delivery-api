@@ -1,5 +1,7 @@
 import { Router } from "express";
 import * as AuthController from "../controllers/auth.controller.js";
+import { restrictTo } from "../middlewares/role.middleware.js";
+import { protect } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
@@ -18,4 +20,11 @@ router.post("/refresh", AuthController.refresh);
 //logout
 router.post("/logout", AuthController.logout);
 
+// Only logged-in Admins can reach this
+router.post(
+  "/create-worker",
+  protect,
+  restrictTo("SYSTEM_ADMIN"),
+  AuthController.createWorker,
+);
 export default router;
