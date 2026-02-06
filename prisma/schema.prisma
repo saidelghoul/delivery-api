@@ -1,14 +1,52 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// schema.prisma
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SYSTEM_ADMIN
+  DISPATCHER
+  DRIVER
+  SELLER
+  CLIENT
+}
+
+enum VerificationType {
+  REGISTRATION
+  PASSWORD_RESET
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  fullName      String
+  role          UserRole
+  isVerified    Boolean        @default(false)
+  needsPasswordChange Boolean  @default(false) // For the "Admin-created" flow
+  refreshToken  String?        @db.Text
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  // Relations
+  verifications Verification[]
+
+  @@map("users") // Maps the model to a lowercase table name in Postgres
+}
+
+model Verification {
+  id        String           @id @default(uuid())
+  code      String           // The 6-digit OTP
+  type      VerificationType
+  expiresAt DateTime
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("verifications")
 }
