@@ -69,6 +69,7 @@ export const logout = async (req: Request, res: Response) => {
     res.status(400).json({ message: error.message });
   }
 };
+
 export const createWorker = async (req: AuthRequest, res: Response) => {
   try {
     const { email, fullName, role } = req.body;
@@ -92,6 +93,25 @@ export const createWorker = async (req: AuthRequest, res: Response) => {
       worker: { id: worker.id, email: worker.email, role: worker.role },
       temporaryPassword: tempPassword, // In dev, we return it to see it; in prod, we'd email it.
     });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    await AuthService.forgotPassword(req.body.email);
+    res.status(200).json({ message: "Reset code sent to your email" });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    await AuthService.resetPassword(email, code, newPassword);
+    res.status(200).json({ message: "Password has been reset successfully" });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }

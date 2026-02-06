@@ -7,7 +7,7 @@ import { hashPassword, comparePassword } from "../utils/password.util.js";
 import { generateOTP } from "../utils/otp.util.js";
 import { transporter } from "../config/mail.config.js";
 import jwt from "jsonwebtoken";
-
+import * as MailService from "./mail.service.js";
 const prisma = new PrismaClient();
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "refresh_secret_456";
 
@@ -49,12 +49,7 @@ export const registerUser = async (
     });
 
     // 4. Send Email (In production, this should be an async queue)
-    await transporter.sendMail({
-      from: '"Delivery App" <noreply@delivery.com>',
-      to: email,
-      subject: "Verify your account",
-      text: `Your verification code is: ${otp}`,
-    });
+    await MailService.sendVerificationEmail(email, otp);
 
     return user;
   });
@@ -178,4 +173,53 @@ export const createWorkerAccount = async (
   });
 
   return { worker, tempPassword };
+};
+
+export const forgotPassword = async (email: string) => {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("User not found");
+
+  const otp = generateOTP();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  await prisma.verification.create({
+    data: {
+      code: otp,
+      type: VerificationType.PASSWORD_RESET,
+      expiresAt,
+      userId: user.id,
+    },
+  });
+
+  await MailService.sendResetPasswordEmail(email, otp);
+};
+
+export const resetPassword = async (
+  email: string,
+  code: string,
+  newPass: string,
+) => {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("User not found");
+
+  const verification = await prisma.verification.findFirst({
+    where: { userId: user.id, code, type: VerificationType.PASSWORD_RESET },
+  });
+
+  if (!verification || new Date() > verification.expiresAt) {
+    throw new Error("Invalid or expired reset code");
+  }
+
+  const hashedPassword = await hashPassword(newPass);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        needsPasswordChange: false, // Reset the flag if it was an admin-created account
+      },
+    }),
+    prisma.verification.delete({ where: { id: verification.id } }),
+  ]);
 };

@@ -27,4 +27,8 @@ router.post(
   restrictTo("SYSTEM_ADMIN"),
   AuthController.createWorker,
 );
+
+router.post("/forgot-password", AuthController.forgotPassword);
+
+router.post("/reset-password", AuthController.resetPassword);
 export default router;
