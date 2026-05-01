@@ -86,34 +86,47 @@ export const verifyOTP = async (userId: string, code: string) => {
 
 export const loginUser = async (email: string, pass: string) => {
   // 1. Find the user
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
+
   if (!user) throw new Error("Invalid credentials");
 
   // 2. Check if verified
-  if (!user.isVerified)
+  if (!user.isVerified) {
     throw new Error("Please verify your email before logging in");
+  }
 
   // 3. Verify password
   const isMatch = await comparePassword(pass, user.password);
   if (!isMatch) throw new Error("Invalid credentials");
 
   // 4. Generate Tokens
-  const payload = { sub: user.id, role: user.role };
+  // We include enterpriseId in the payload so the Middleware can
+  // extract it without hitting the database on every request.
+  const payload = {
+    sub: user.id,
+    role: user.role,
+    enterpriseId: user.enterpriseId,
+  };
+
   const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken(payload);
 
   // 5. Save Refresh Token to DB for session management
   await prisma.user.update({
     where: { id: user.id },
-    data: { refreshToken }, // In a real app, you might hash this too
+    data: { refreshToken },
   });
 
+  // 6. Return payload
   return {
     user: {
       id: user.id,
       email: user.email,
       role: user.role,
       fullName: user.fullName,
+      enterpriseId: user.enterpriseId, // Added here for Frontend redirection logic
       needsPasswordChange: user.needsPasswordChange,
     },
     accessToken,
@@ -149,26 +162,24 @@ export const logoutUser = async (userId: string) => {
 export const createWorkerAccount = async (
   email: string,
   fullName: string,
-  role: UserRole, // Limited to DRIVER or DISPATCHER in controller
-  adminId: string,
+  role: UserRole,
+  enterpriseId: string, // Changed from adminId to enterpriseId
 ) => {
-  // 1. Check if user already exists
   const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) throw new Error("User with this email already exists");
+  if (existingUser) throw new Error("User already exists");
 
-  // 2. Set a temporary password (In a real app, you might email this or a reset link)
   const tempPassword = "Welcome@" + Math.floor(1000 + Math.random() * 9000);
   const hashedPassword = await hashPassword(tempPassword);
 
-  // 3. Create the worker
   const worker = await prisma.user.create({
     data: {
       email,
       fullName,
       password: hashedPassword,
       role,
-      isVerified: true, // Auto-verified by Admin
-      needsPasswordChange: true, // Forces change on first login
+      enterpriseId, // The worker is now shielded by the same Enterprise ID
+      isVerified: true,
+      needsPasswordChange: true,
     },
   });
 
@@ -222,4 +233,34 @@ export const resetPassword = async (
     }),
     prisma.verification.delete({ where: { id: verification.id } }),
   ]);
+};
+
+export const linkEnterpriseToAdmin = async (
+  userId: string,
+  enterpriseName: string,
+) => {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Create Enterprise
+    const enterprise = await tx.enterprise.create({
+      data: { name: enterpriseName },
+    });
+
+    // 2. Link Admin to it
+    const updatedUser = await tx.user.update({
+      where: { id: userId },
+      data: { enterpriseId: enterprise.id },
+    });
+
+    // 3. Generate NEW tokens because the enterpriseId has changed
+    const payload = {
+      sub: updatedUser.id,
+      role: updatedUser.role,
+      enterpriseId: enterprise.id,
+    };
+    return {
+      enterprise,
+      accessToken: generateAccessToken(payload),
+      refreshToken: generateRefreshToken(payload),
+    };
+  });
 };

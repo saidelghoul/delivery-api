@@ -73,25 +73,30 @@ export const logout = async (req: Request, res: Response) => {
 export const createWorker = async (req: AuthRequest, res: Response) => {
   try {
     const { email, fullName, role } = req.body;
+    const adminEnterpriseId = req.user!.enterpriseId;
 
-    // Validate role input
-    if (!["DRIVER", "DISPATCHER"].includes(role)) {
+    if (!adminEnterpriseId) {
       return res
         .status(400)
-        .json({ message: "Can only create DRIVER or DISPATCHER roles" });
+        .json({ message: "Admin must have an enterprise to create workers" });
     }
 
+    if (!["DRIVER", "DISPATCHER"].includes(role)) {
+      return res.status(400).json({ message: "Invalid worker role" });
+    }
+
+    // Update service call to pass the enterpriseId
     const { worker, tempPassword } = await AuthService.createWorkerAccount(
       email,
       fullName,
       role,
-      req.user!.id,
+      adminEnterpriseId, // Pass this instead of just adminId
     );
 
     res.status(201).json({
-      message: `Worker account created.`,
+      message: `Worker account created for ${worker.fullName}`,
       worker: { id: worker.id, email: worker.email, role: worker.role },
-      temporaryPassword: tempPassword, // In dev, we return it to see it; in prod, we'd email it.
+      temporaryPassword: tempPassword,
     });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
@@ -112,6 +117,27 @@ export const resetPassword = async (req: Request, res: Response) => {
     const { email, code, newPassword } = req.body;
     await AuthService.resetPassword(email, code, newPassword);
     res.status(200).json({ message: "Password has been reset successfully" });
+  } catch (error: any) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const setupEnterprise = async (req: AuthRequest, res: Response) => {
+  try {
+    const { name } = req.body;
+    const userId = req.user!.id;
+
+    if (!name) {
+      return res.status(400).json({ message: "Enterprise name is required" });
+    }
+
+    // Call the service we discussed (linkEnterpriseToAdmin)
+    const result = await AuthService.linkEnterpriseToAdmin(userId, name);
+
+    res.status(201).json({
+      message: "Enterprise created and linked successfully",
+      ...result,
+    });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }

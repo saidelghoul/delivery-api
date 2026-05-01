@@ -6,6 +6,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: string;
+    enterpriseId?: string | null;
   };
 }
 
@@ -32,10 +33,23 @@ export const protect = async (
     req.user = {
       id: decoded.sub,
       role: decoded.role,
+      enterpriseId: decoded.enterpriseId,
     };
 
     next();
   } catch (error) {
     return res.status(401).json({ message: "Invalid or expired token" });
   }
+};
+export const requireEnterprise = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  if (req.user?.role !== "SYSTEM_ADMIN" && !req.user?.enterpriseId) {
+    return res.status(403).json({
+      message: "Access denied. Please complete enterprise onboarding.",
+    });
+  }
+  next();
 };
