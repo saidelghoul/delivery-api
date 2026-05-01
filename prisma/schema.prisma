@@ -38,10 +38,12 @@ enum RunStatus {
 }
 
 enum PackageStatus {
-  WAREHOUSE
-  IN_TRANSIT
-  DELIVERED
-  RETURNED
+  PENDING_PICKUP    // Dispatcher assigned a driver to go get the item
+  PICKED_UP         // Driver has the item in the truck, moving to hub
+  WAREHOUSE         // Item is checked into the central warehouse
+  IN_TRANSIT        // Item is on its final delivery leg to the client
+  DELIVERED         // Success
+  RETURNED          // Delivery failed, back at warehouse or seller
 }
 
 // --- MODELS ---
@@ -84,24 +86,33 @@ model User {
 }
 
 model Package {
-  id            String        @id @default(uuid())
-  price         Float
-  clientAddress String
-  priority      Priority      @default(NORMAL)
-  status        PackageStatus @default(WAREHOUSE)
+  id                  String        @id @default(uuid())
+  price               Float
+  
+  // Addresses
+  pickupAddress       String?       // Where the driver picks it up (Seller/Client)
+  clientAddress       String        // The final destination
+  
+  priority            Priority      @default(NORMAL)
+  status              PackageStatus @default(WAREHOUSE)
 
-  enterpriseId String
-  enterprise   Enterprise @relation(fields: [enterpriseId], references: [id])
+  // Multi-tenancy & Ownership
+  enterpriseId        String
+  enterprise          Enterprise    @relation(fields: [enterpriseId], references: [id])
+  
+  sellerId            String
+  seller              User          @relation("SellerPackages", fields: [sellerId], references: [id])
 
-  sellerId String
-  seller   User   @relation("SellerPackages", fields: [sellerId], references: [id])
+  // Shift Connection
+  runId               String?
+  deliveryRun         DeliveryRun?  @relation(fields: [runId], references: [id])
 
-  // Connection to the shift
-  runId       String?
-  deliveryRun DeliveryRun? @relation(fields: [runId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // Lifecycle Timestamps (For Analytics & Troubleshooting)
+  createdAt           DateTime      @default(now())
+  pickedUpAt          DateTime?     // When driver scanned it at pickup
+  arrivedAtWarehouseAt DateTime?    // When warehouse worker scanned it in
+  deliveredAt         DateTime?     // Final handover
+  updatedAt           DateTime      @updatedAt
 
   @@map("packages")
 }
