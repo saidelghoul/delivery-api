@@ -1,4 +1,6 @@
-import { PrismaClient, UserRole, VerificationType } from "@prisma/client";
+import { UserRole, VerificationType } from "@prisma/client";
+import prisma from "../config/db.js";
+
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -8,7 +10,6 @@ import { generateOTP } from "../utils/otp.util.js";
 import { transporter } from "../config/mail.config.js";
 import jwt from "jsonwebtoken";
 import * as MailService from "./mail.service.js";
-const prisma = new PrismaClient();
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "refresh_secret_456";
 
 export const registerUser = async (
