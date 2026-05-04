@@ -131,7 +131,6 @@ export const setupEnterprise = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: "Enterprise name is required" });
     }
 
-    // Call the service we discussed (linkEnterpriseToAdmin)
     const result = await AuthService.linkEnterpriseToAdmin(userId, name);
 
     res.status(201).json({
