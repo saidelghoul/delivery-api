@@ -9,6 +9,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- ENUMS ---
+
 enum UserRole {
   SYSTEM_ADMIN
   DISPATCHER
@@ -22,22 +24,129 @@ enum VerificationType {
   PASSWORD_RESET
 }
 
+enum Priority {
+  NORMAL
+  URGENT
+  IMMEDIATE
+}
+
+enum RunStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum PackageStatus {
+  PENDING_PICKUP    // Dispatcher assigned a driver to go get the item
+  PICKED_UP         // Driver has the item in the truck, moving to hub
+  WAREHOUSE         // Item is checked into the central warehouse
+  IN_TRANSIT        // Item is on its final delivery leg to the client
+  DELIVERED         // Success
+  RETURNED          // Delivery failed, back at warehouse or seller
+}
+
+// --- MODELS ---
+
+model Enterprise {
+  id        String    @id @default(uuid())
+  name      String
+  users     User[]
+  packages  Package[]
+  createdAt DateTime  @default(now())
+
+  @@map("enterprises")
+}
+
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  password      String
-  fullName      String
-  role          UserRole
-  isVerified    Boolean        @default(false)
-  needsPasswordChange Boolean  @default(false) // For the "Admin-created" flow
-  refreshToken  String?        @db.Text
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                  String   @id @default(uuid())
+  email               String   @unique
+  password            String
+  fullName            String
+  role                UserRole
+  isVerified          Boolean  @default(false)
+  needsPasswordChange Boolean  @default(false)
+  refreshToken        String?  @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Multi-tenancy
+  enterpriseId String?
+  enterprise   Enterprise? @relation(fields: [enterpriseId], references: [id])
 
   // Relations
-  verifications Verification[]
+  verifications   Verification[]
+  createdPackages Package[]      @relation("SellerPackages")
+  
+  // Ambiguous Relations: We must name them so Prisma knows which is which
+  managedRuns  DeliveryRun[] @relation("DispatcherRuns")
+  executedRuns DeliveryRun[] @relation("DriverRuns")
 
-  @@map("users") // Maps the model to a lowercase table name in Postgres
+  @@map("users")
+}
+
+model Package {
+  id                  String        @id @default(uuid())
+  price               Float
+  
+  // Addresses
+  pickupAddress       String?       // Where the driver picks it up (Seller/Client)
+  clientAddress       String        // The final destination
+  
+  priority            Priority      @default(NORMAL)
+  status              PackageStatus @default(WAREHOUSE)
+
+  // Multi-tenancy & Ownership
+  enterpriseId        String
+  enterprise          Enterprise    @relation(fields: [enterpriseId], references: [id])
+  
+  sellerId            String
+  seller              User          @relation("SellerPackages", fields: [sellerId], references: [id])
+
+  // Shift Connection
+  runId               String?
+  deliveryRun         DeliveryRun?  @relation(fields: [runId], references: [id])
+
+  // Lifecycle Timestamps (For Analytics & Troubleshooting)
+  createdAt           DateTime      @default(now())
+  pickedUpAt          DateTime?     // When driver scanned it at pickup
+  arrivedAtWarehouseAt DateTime?    // When warehouse worker scanned it in
+  deliveredAt         DateTime?     // Final handover
+  updatedAt           DateTime      @updatedAt
+
+  @@map("packages")
+}
+
+model DeliveryRun {
+  id     String    @id @default(uuid())
+  status RunStatus @default(PENDING)
+
+  dispatcherId String
+  dispatcher   User   @relation("DispatcherRuns", fields: [dispatcherId], references: [id])
+
+  driverId String
+  driver   User   @relation("DriverRuns", fields: [driverId], references: [id])
+
+  packages Package[]
+  location DriverLocation?
+
+  startTime DateTime?
+  endTime   DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("delivery_runs")
+}
+
+model DriverLocation {
+  id          String      @id @default(uuid())
+  runId       String      @unique
+  deliveryRun DeliveryRun @relation(fields: [runId], references: [id])
+
+  latitude  Float
+  longitude Float
+  updatedAt DateTime @updatedAt
+
+  @@map("driver_locations")
 }
 
 model Verification {

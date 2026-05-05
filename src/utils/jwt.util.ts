@@ -6,11 +6,17 @@ const ACCESS_SECRET = (process.env.JWT_ACCESS_SECRET ||
 const REFRESH_SECRET = (process.env.JWT_REFRESH_SECRET ||
   "refresh_secret_456") as string;
 
-export const generateAccessToken = (payload: object) => {
+interface JWTPayload {
+  sub: string;
+  role: string;
+  enterpriseId?: string | null;
+}
+
+export const generateAccessToken = (payload: JWTPayload) => {
   return jwt.sign(payload, ACCESS_SECRET, { expiresIn: "15m" });
 };
 
-export const generateRefreshToken = (payload: object) => {
+export const generateRefreshToken = (payload: JWTPayload) => {
   return jwt.sign(payload, REFRESH_SECRET, { expiresIn: "7d" });
 };
 

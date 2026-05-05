@@ -6,6 +6,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: string;
+    enterpriseId?: string | null;
   };
 }
 
@@ -32,6 +33,7 @@ export const protect = async (
     req.user = {
       id: decoded.sub,
       role: decoded.role,
+      enterpriseId: decoded.enterpriseId,
     };
 
     next();
