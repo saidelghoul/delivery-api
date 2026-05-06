@@ -18,6 +18,9 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true,
-    "esModuleInterop": true // Recommended for Prisma and Node environment
-  }
+    "esModuleInterop": true,
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "exclude": ["prisma.config.ts"]
 }
