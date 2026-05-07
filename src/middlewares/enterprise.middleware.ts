@@ -1,19 +1,15 @@
-import type { Response, NextFunction } from "express";
-import prisma from "../config/db.js";
-import type { AuthRequest } from "./auth.middleware.js";
+import type { Response, NextFunction } from 'express';
+import prisma from '../config/db.js';
+import type { AuthRequest } from './auth.middleware.js';
 
-export const isOnboarded = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-) => {
+export const isOnboarded = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const user = req.user;
 
     // 1. Check if enterpriseId exists in the JWT token payload
     if (!user?.enterpriseId) {
       return res.status(403).json({
-        message: "Access denied. Please complete your enterprise setup first.",
+        message: 'Access denied. Please complete your enterprise setup first.',
       });
     }
 
@@ -25,15 +21,15 @@ export const isOnboarded = async (
 
     if (!enterprise) {
       return res.status(404).json({
-        message: "Enterprise profile not found. Please contact support.",
+        message: 'Enterprise profile not found. Please contact support.',
       });
     }
 
     // 3. Success - Move to the controller
     next();
-  } catch (error) {
+  } catch (error: unknown) {
     return res.status(500).json({
-      message: "Internal server error during onboarding check.",
+      message: 'Internal server error during onboarding check.',
     });
   }
 };

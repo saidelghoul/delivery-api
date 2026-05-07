@@ -6,7 +6,14 @@ import { hashPassword, comparePassword } from '../utils/password.util.js';
 import { generateOTP } from '../utils/otp.util.js';
 import jwt from 'jsonwebtoken';
 import * as MailService from './mail.service.js';
+import type { JwtPayload } from 'jsonwebtoken';
+
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret_456';
+
+interface RefreshTokenPayload extends JwtPayload {
+  sub: string;
+  role: string; // whatever type your role is, e.g. 'admin' | 'user'
+}
 
 export const registerUser = async (
   email: string,
@@ -133,7 +140,7 @@ export const loginUser = async (email: string, pass: string) => {
 
 export const refreshSession = async (token: string) => {
   // 1. Verify the refresh token
-  const decoded = jwt.verify(token, REFRESH_SECRET) as any;
+  const decoded = jwt.verify(token, REFRESH_SECRET) as RefreshTokenPayload;
 
   // 2. Check if user exists and if the token matches the one in DB
   const user = await prisma.user.findUnique({ where: { id: decoded.sub } });

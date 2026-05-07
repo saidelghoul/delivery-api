@@ -1,5 +1,5 @@
-import type { Request, Response, NextFunction } from "express";
-import { verifyAccessToken } from "../utils/jwt.util.js";
+import type { Request, Response, NextFunction } from 'express';
+import { verifyAccessToken } from '../utils/jwt.util.js';
 
 // Extend Express Request type to include user data
 export interface AuthRequest extends Request {
@@ -10,21 +10,17 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const protect = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-) => {
+export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     // 1. Get token from header
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ message: "You are not logged in" });
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'You are not logged in' });
     }
 
-    const token = authHeader.split(" ")[1];
+    const token = authHeader.split(' ')[1];
     if (!token) {
-      return res.status(401).json({ message: "Token missing from header" });
+      return res.status(401).json({ message: 'Token missing from header' });
     }
     // 2. Verify token
     const decoded = verifyAccessToken(token) as any;
@@ -37,7 +33,7 @@ export const protect = async (
     };
 
     next();
-  } catch (error) {
-    return res.status(401).json({ message: "Invalid or expired token" });
+  } catch (error: unknown) {
+    return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
