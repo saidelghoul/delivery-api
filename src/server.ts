@@ -1,8 +1,10 @@
-import "dotenv/config";
-import app from "./app.js";
+import 'dotenv/config';
+import app from './app.js';
+import pino from 'pino';
 
 const PORT = process.env.PORT || 3000;
+const logger = pino();
 
 app.listen(PORT, () => {
-  console.log(` Server running on http://localhost:${PORT}`);
+  logger.info(`Server running on http://localhost:${PORT}`);
 });
