@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from 'crypto';
 
 export const generateOTP = (): string => {
   // Generates a random 6-digit number string

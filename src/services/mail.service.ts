@@ -1,10 +1,10 @@
-import { transporter } from "../config/mail.config.js";
+import { transporter } from '../config/mail.config.js';
 
 export const sendVerificationEmail = async (to: string, code: string) => {
   const mailOptions = {
     from: '"Delivery App" <noreply@delivery.com>',
     to,
-    subject: "Verify your account",
+    subject: 'Verify your account',
     html: `
       <div style="font-family: sans-serif; text-align: center;">
         <h2>Welcome to Delivery App!</h2>
@@ -22,7 +22,7 @@ export const sendResetPasswordEmail = async (to: string, code: string) => {
   const mailOptions = {
     from: '"Delivery App" <noreply@delivery.com>',
     to,
-    subject: "Password Reset Request",
+    subject: 'Password Reset Request',
     html: `
       <div style="font-family: sans-serif;">
         <p>You requested a password reset. Use this code to continue:</p>

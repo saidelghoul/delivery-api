@@ -1,11 +1,11 @@
-import { PackageStatus } from "@prisma/client";
-import prisma from "../config/db.js";
+import { PackageStatus } from '@prisma/client';
+import prisma from '../config/db.js';
 
 export const createPackage = async (data: {
   price: number;
   pickupAddress: string;
   clientAddress: string;
-  priority: "NORMAL" | "URGENT" | "IMMEDIATE";
+  priority: 'NORMAL' | 'URGENT' | 'IMMEDIATE';
   sellerId: string;
   enterpriseId: string;
 }) => {
@@ -25,6 +25,6 @@ export const createPackage = async (data: {
 export const getEnterprisePackages = async (enterpriseId: string) => {
   return await prisma.package.findMany({
     where: { enterpriseId },
-    orderBy: { createdAt: "desc" },
+    orderBy: { createdAt: 'desc' },
   });
 };
