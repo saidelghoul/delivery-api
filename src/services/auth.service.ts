@@ -1,16 +1,12 @@
-import { UserRole, VerificationType } from "@prisma/client";
-import prisma from "../config/db.js";
+import { UserRole, VerificationType } from '@prisma/client';
+import prisma from '../config/db.js';
 
-import {
-  generateAccessToken,
-  generateRefreshToken,
-} from "../utils/jwt.util.js";
-import { hashPassword, comparePassword } from "../utils/password.util.js";
-import { generateOTP } from "../utils/otp.util.js";
-import { transporter } from "../config/mail.config.js";
-import jwt from "jsonwebtoken";
-import * as MailService from "./mail.service.js";
-const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "refresh_secret_456";
+import { generateAccessToken, generateRefreshToken } from '../utils/jwt.util.js';
+import { hashPassword, comparePassword } from '../utils/password.util.js';
+import { generateOTP } from '../utils/otp.util.js';
+import jwt from 'jsonwebtoken';
+import * as MailService from './mail.service.js';
+const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_secret_456';
 
 export const registerUser = async (
   email: string,
@@ -20,7 +16,7 @@ export const registerUser = async (
 ) => {
   // 1. Check existence
   const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) throw new Error("User already exists");
+  if (existingUser) throw new Error('User already exists');
 
   // 2. Hash Password
   const hashedPassword = await hashPassword(pass);
@@ -65,10 +61,10 @@ export const verifyOTP = async (userId: string, code: string) => {
     },
   });
 
-  if (!verification) throw new Error("Invalid verification code");
+  if (!verification) throw new Error('Invalid verification code');
 
   if (new Date() > verification.expiresAt) {
-    throw new Error("Verification code has expired");
+    throw new Error('Verification code has expired');
   }
 
   // Use a transaction to ensure both steps happen or none
@@ -82,7 +78,7 @@ export const verifyOTP = async (userId: string, code: string) => {
     }),
   ]);
 
-  return { message: "Account verified successfully" };
+  return { message: 'Account verified successfully' };
 };
 
 export const loginUser = async (email: string, pass: string) => {
@@ -91,16 +87,16 @@ export const loginUser = async (email: string, pass: string) => {
     where: { email },
   });
 
-  if (!user) throw new Error("Invalid credentials");
+  if (!user) throw new Error('Invalid credentials');
 
   // 2. Check if verified
   if (!user.isVerified) {
-    throw new Error("Please verify your email before logging in");
+    throw new Error('Please verify your email before logging in');
   }
 
   // 3. Verify password
   const isMatch = await comparePassword(pass, user.password);
-  if (!isMatch) throw new Error("Invalid credentials");
+  if (!isMatch) throw new Error('Invalid credentials');
 
   // 4. Generate Tokens
   // We include enterpriseId in the payload so the Middleware can
@@ -143,7 +139,7 @@ export const refreshSession = async (token: string) => {
   const user = await prisma.user.findUnique({ where: { id: decoded.sub } });
 
   if (!user || user.refreshToken !== token) {
-    throw new Error("Invalid or expired refresh token");
+    throw new Error('Invalid or expired refresh token');
   }
 
   // 3. Generate new Access Token
@@ -167,9 +163,9 @@ export const createWorkerAccount = async (
   enterpriseId: string, // Changed from adminId to enterpriseId
 ) => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) throw new Error("User already exists");
+  if (existingUser) throw new Error('User already exists');
 
-  const tempPassword = "Welcome@" + Math.floor(1000 + Math.random() * 9000);
+  const tempPassword = 'Welcome@' + Math.floor(1000 + Math.random() * 9000);
   const hashedPassword = await hashPassword(tempPassword);
 
   const worker = await prisma.user.create({
@@ -189,7 +185,7 @@ export const createWorkerAccount = async (
 
 export const forgotPassword = async (email: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new Error("User not found");
+  if (!user) throw new Error('User not found');
 
   const otp = generateOTP();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -206,20 +202,16 @@ export const forgotPassword = async (email: string) => {
   await MailService.sendResetPasswordEmail(email, otp);
 };
 
-export const resetPassword = async (
-  email: string,
-  code: string,
-  newPass: string,
-) => {
+export const resetPassword = async (email: string, code: string, newPass: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) throw new Error("User not found");
+  if (!user) throw new Error('User not found');
 
   const verification = await prisma.verification.findFirst({
     where: { userId: user.id, code, type: VerificationType.PASSWORD_RESET },
   });
 
   if (!verification || new Date() > verification.expiresAt) {
-    throw new Error("Invalid or expired reset code");
+    throw new Error('Invalid or expired reset code');
   }
 
   const hashedPassword = await hashPassword(newPass);
@@ -236,10 +228,7 @@ export const resetPassword = async (
   ]);
 };
 
-export const linkEnterpriseToAdmin = async (
-  userId: string,
-  enterpriseName: string,
-) => {
+export const linkEnterpriseToAdmin = async (userId: string, enterpriseName: string) => {
   return await prisma.$transaction(async (tx) => {
     // 1. Create Enterprise
     const enterprise = await tx.enterprise.create({
