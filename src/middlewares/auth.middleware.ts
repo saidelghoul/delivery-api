@@ -1,12 +1,18 @@
 import type { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../utils/jwt.util.js';
+import type { JwtPayload } from 'jsonwebtoken';
 
+interface AccessTokenPayload extends JwtPayload {
+  sub: string;
+  role: string;
+  enterpriseId?: string | null;
+}
 // Extend Express Request type to include user data
 export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: string;
-    enterpriseId?: string | null;
+    enterpriseId?: string | null | undefined;
   };
 }
 
@@ -23,7 +29,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       return res.status(401).json({ message: 'Token missing from header' });
     }
     // 2. Verify token
-    const decoded = verifyAccessToken(token) as any;
+    const decoded = verifyAccessToken(token) as AccessTokenPayload;
 
     // 3. Grant access and attach user info to request
     req.user = {
@@ -33,7 +39,7 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
     };
 
     next();
-  } catch (error: unknown) {
+  } catch (_) {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };

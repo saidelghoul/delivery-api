@@ -27,7 +27,7 @@ export const isOnboarded = async (req: AuthRequest, res: Response, next: NextFun
 
     // 3. Success - Move to the controller
     next();
-  } catch (error: unknown) {
+  } catch (_) {
     return res.status(500).json({
       message: 'Internal server error during onboarding check.',
     });
