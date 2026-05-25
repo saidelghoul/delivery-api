@@ -1,6 +1,7 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 FROM node:20-alpine AS builder
 
+#tells Docker to create a folder named app inside the container and switch into it
 WORKDIR /app
 
 # Install all dependencies (including devDependencies for tsc)
