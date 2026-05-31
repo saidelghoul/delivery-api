@@ -32,7 +32,7 @@
     "pino": "^10.3.1",
     "prisma": "^6.19.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
