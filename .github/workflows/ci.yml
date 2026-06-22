@@ -12,7 +12,7 @@ jobs: # Jobs high level tasks
     runs-on: ubuntu-latest
     steps: # The actual commands
       - name: Checkout code # clone GitHub repository into that machine folder
-        uses: actions/checkout@v4 # point to a repo to use
+        uses: actions/checkout@v7 # point to a repo to use
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,7 +35,7 @@ jobs: # Jobs high level tasks
     needs: lint
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -55,7 +55,7 @@ jobs: # Jobs high level tasks
     needs: build
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build Docker image
         run: docker build -t backend:ci .
@@ -66,7 +66,7 @@ jobs: # Jobs high level tasks
     needs: build
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
